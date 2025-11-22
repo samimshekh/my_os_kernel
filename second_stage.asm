@@ -1,9 +1,12 @@
-org 0x7e00          ; Load address of the second stage loader
-start:
-    mov si, msg      ; Load address of message string into SI
-    call print       ; Call print.asm routine to print the string on screen
-    jmp $            ; Infinite loop to halt execution
+section .entry
+extern main
+global entry
 
-msg: db "[INFO] Second Stage Loader successfully loaded at 0x7E00 and running...", 0 ; Null-terminated string
-
-%include "print.asm"  ; Include helper print routine (screen output)
+bits 32
+entry:
+    push edx
+    call main
+    cli
+hang:
+    hlt
+    jmp hang
