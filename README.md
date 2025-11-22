@@ -1,93 +1,76 @@
-# My OS Kernel - Bootloader (x86 i686)
+# Second Stage Loader (x86 i686)
 
 ## Overview
-Is project me humne **simple bootloader** banaya hai jo screen pe `"OK"` print karta hai aur infinite loop me chala jata hai.
+Ye project **second stage bootloader** ke liye hai jo **floppy disk se sector read karke** memory me load hota hai aur execution start karta hai. Ye loader **first stage bootloader ke baad** run hota hai.  
+
+- **Target Architecture:** x86 i686 (32-bit)  
+- **Boot Mode:** BIOS Real Mode  
+- **Load Address:** `0x7E00` (memory segment where second stage is loaded)  
+- **Disk Service:** BIOS INT 13h ([Ralf Brown's Interrupt List: INT 13h](https://en.wikipedia.org/wiki/INT_13H)) 
+- **Sector Loaded:** Defined by `__LODE_SECTOR` constant  
 
 ---
 
-## Architecture
-- **Target Architecture:** x86 i686 (32-bit)
-- **Boot Mode:** BIOS (Real Mode)
-- **Boot Sector Size:** 512 bytes
-- **Boot Signature:** `0x55AA` (mandatory for BIOS recognition)
+## Flow of Execution
 
-### Boot Sector Explanation
-- **0x7C00** → BIOS bootloader load address
-- **0x55AA** → Last 2 bytes of boot sector, BIOS ke liye **signature (0x55AA)** hai naho boot nahi hota hai
-- **Boot code** → CPU initialization, screen output
-- **Padding** → Boot sector ko exactly 512 bytes banane ke liye zero padding  
+1. **First Stage Bootloader**  
+   - Loaded by BIOS at `0x7C00`  
+   - Reads second stage loader from floppy disk using **INT 13h**  
 
-**Why 0x55AA?**  
-BIOS boot process ke liye ye **magic signature** hota hai. Agar ye value last me nahi hogi, BIOS bootloader ko load nahi karega.
+2. **Second Stage Loader**  
+   - Loaded at memory **0x7E00**  
+   - Reads **`__LODE_SECTOR`** sectors from disk (usually sector 1 or more)  
+   - Prints status message `[INFO] Second Stage Loader successfully loaded at 0x7E00 and running...`  
+   - Enters infinite loop / waits for further tasks  
 
 ---
 
-## Tools Required
-1. **NASM** – Assembler for x86 (`nasm`)
-2. **QEMU** – Emulator to run x86 images (`qemu-system-i386`)
-3. **Make** – Automation tool (`make`)
-4. **dd** – Binary copy to image file (Linux/WSL)
+## Key Constants
+
+| Constant | Purpose |
+|----------|---------|
+| `__LODE_SECTOR` | Number of sectors to read from floppy. Defines how much data to load in memory. |
+| `0x7E00`       | Memory address where second stage loader is loaded by first stage. |
+| `INT 13h`      | BIOS interrupt used for disk read operations. Handles floppy/hard disk access. |
 
 ---
 
-## Project Structure
+## Disk Read (INT 13h)
+
+- **INT 13h AH=02h** → Read sector(s) from disk  
+- **Registers Used**:  
+  - `AH` = 02h (read)  
+  - `AL` = number of sectors to read (`__LODE_SECTOR`)  
+  - `CH` = cylinder  
+  - `CL` = sector number  
+  - `DH` = head  
+  - `DL` = drive number (0 = floppy, 80h = first HDD)  
+  - `ES:BX` = memory address to load sector(s)  
+
+- **Error Handling:**  
+  - Retry up to 3 times on failure  
+  - If read fails, prints `[ERROR] Read from disk failed!` and halts  
+
+---
+
+## Files
+
 ```
 
 .
-├── boot.asm       # Bootloader assembly code
-├── boot.bin       # Compiled binary (512 bytes)
-├── boot.img       # Floppy image (1.44 MB)
-└── Makefile       # Build automation
+├── second_stage.asm   # Second stage loader code
+├── print.asm          # Print routine for screen output
+├── Makefile           # Compile and create bootable floppy image
+└── README.md          # This documentation
 
 ````
 
 ---
 
-## Makefile Targets
-
-- **Build bootloader binary and image**
-```bash
-make
-````
-
-* Steps:
-
-  1. `boot.asm` → compiled to `boot.bin` (NASM)
-  2. `boot.bin` → written to `boot.img` (1.44MB floppy image, `dd`)
-
-* **Run bootloader in QEMU**
+## Build & Run
 
 ```bash
-make run
-```
-
-* QEMU automatically boots `boot.img` and shows `"OK"` on the screen.
-
-* **Clean build files**
-
-```bash
-make clean
-```
-
-* Removes `boot.bin` and `boot.img`.
-
----
-
----
-
-## Notes
-
-* Ye bootloader **x86 i686 BIOS real mode** ke liye hai.
-* Bootloader ka size **exactly 512 bytes** hona chahiye.
-* **0x55AA** end me hona mandatory hai.
-* `Makefile` simple hai aur sab automated build/run steps handle karta hai. in sab ko aap bas **make && make run** kardo   
-
----
-
-## Quick Commands
-
-```bash
-# Build bootloader
+# Build second stage loader and floppy image
 make
 
 # Run in QEMU
@@ -95,4 +78,15 @@ make run
 
 # Clean build files
 make clean
+````
+
+---
+
+## Notes
+
+* Always make sure `__LODE_SECTOR` matches the **number of sectors occupied by second stage loader**
+* Loader assumes **first stage bootloader** has already executed
+* Memory address `0x7E00` must not overlap with first stage bootloader (`0x7C00`)
+* INT 13h is **mandatory BIOS call** for floppy/hard disk reads in real mode
+
 ```
