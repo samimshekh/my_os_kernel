@@ -1,74 +1,82 @@
-# Second Stage Loader (x86 i686)
+# **My 32-bit OS – v0.1**
 
-## Overview
-# Simple Multi-Stage Bootloader (Real Mode → Protected Mode 32-bit)
+**First Protected Mode Boot + C VGA Print System Working**
 
-Ye project ek basic 2-stage bootloader example hai:
-
-### Boot Flow
-1. BIOS first sector ko `0x7C00` par load karta hai (`boot.asm`)
-2. First stage disk se next sector load karke `0x7E00` par copy karta hai
-3. A20 enable + GDT load hota hai
-4. CPU protected mode enable hota hai
-5. Far jump karke 32-bit code start hota hai (second_stage)
-6. Assembly `entry` se `main()` call hota hai jo VGA pe text print karta hai
+Ye project ek **custom 32-bit OS** hai jo **Real Mode se Protected Mode** me switch karta hai, aur **C printf + VGA text mode** ke saath completely working output system provide karta hai.
+Is version me **project structure optimize**, **printf formatting support**, **color + cursor control**, aur **clean build system** fix kiya gaya hai.
 
 ---
 
-### Features
-- Real mode boot sector (512 bytes, `0xAA55` signature)
-- GDT setup for 32-bit code & data segment
-- A20 line enable (8042 controller method)
-- INT 13h disk read
-- Protected mode switch (`CR0` PE=1)
-- VGA text print from C code
+## My OS Screenshot
+
+![My Operating System Screenshot](./my_os.png)
+
+## **Features (v0.1)**
+
+* **Custom Bootloader (boot.asm)**
+* **Real Mode → Protected Mode switch**
+* **Second stage loader in C**
+* **VGA Text Mode fully working**
+* `printf()` support:
+
+  * `%c` (character)
+  * `%s` (string)
+  * `%d / %i` (signed int)
+  * `%u` (unsigned dec)
+  * `%x` (hex)
+  * `%b` (binary)
+  * `%w` (word 16-bit hex)
+* **Screen Color control (foreground + background macros)**
+* **Cursor Position set (setXy)**
+* **Screen clear (cls) function**
+* **Project structure clean + modular**
+* **Makefile one-command build system**
 
 ---
 
-### Build & Run
-```bash
+## **Project Structure**
+
+```
+├── Makefile
+├── README.md
+├── boot
+│   ├── Makefile
+│   ├── boot.asm
+│   ├── lode_file.asm
+│   └── print.asm
+├── build
+│   ├── boot.bin
+│   ├── boot.img
+│   ├── main.o
+│   ├── second_stage.bin
+│   └── second_stage.o
+├── linker.map
+├── my_os.png
+└── stage2
+    ├── Makefile
+    ├── asm
+    │   └── second_stage.asm
+    ├── c
+    │   ├── linker.ld
+    │   └── main.c
+    └── include
+        ├── stdio.h
+        └── type.h
+```
+
+---
+
+## **Build & Run Commands**
+
+### **Build**
+
+```sh
 make clean
 make
+```
+
+### **Run in QEMU**
+
+```sh
 make run
-````
-
-### Requirements
-
-```bash
-sudo apt install nasm gcc-multilib qemu-system-i386 binutils
-```
-
----
-
-### Important Addresses
-
-| Item                  | Address   |
-| --------------------- | --------- |
-| boot sector load      | `0x7C00`  |
-| second stage load     | `0x7E00`  |
-| VGA text buffer       | `0xB8000` |
-| PM code jump selector | `0x08`    |
-
----
-
-### Boot Device Handling
-
-BIOS boot drive `DL` → `[bios_drive]` me save hota hai → `push edx` ke through `void main(short int d);` ko pass kiya jata hai.
-
----
-
-### Test Output
-
-Project run hone par VGA screen par message print hota:
-
-```
-Hello from C code...
-```
-
----
-
-### Clean
-
-```bash
-make clean
 ```

@@ -1,6 +1,7 @@
 bits 16
 %define ENDL 0x0D, 0x0A
-__LODE_SECTOR equ 1
+%include "lode_file.asm"
+__LODE_SECTOR equ (__lode_size / 512) + ((__lode_size % 512) != 0)
 org 0x7c00
 xor ax, ax      ; AX = 0, zero out the register
 mov ds, ax      ; Set Data Segment (DS) = 0
