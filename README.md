@@ -1,82 +1,57 @@
-# **My 32-bit OS – v0.1**
+# 32-bit Protected Mode GDT Setup in c
 
-**First Protected Mode Boot + C VGA Print System Working**
+Ye project **Global Descriptor Table (GDT)** ko setup karta hai taaki aapka kernel ya bare-metal C code 32-bit protected mode me run kar sake.  
 
-Ye project ek **custom 32-bit OS** hai jo **Real Mode se Protected Mode** me switch karta hai, aur **C printf + VGA text mode** ke saath completely working output system provide karta hai.
-Is version me **project structure optimize**, **printf formatting support**, **color + cursor control**, aur **clean build system** fix kiya gaya hai.
+---
+## Features
+
+- Fully **32-bit protected mode** GDT setup
+- Kernel & user segments:
+  - Kernel Code/Data (32-bit)
+  - Kernel Code/Data (16-bit for backward compatibility)
+  - User Code/Data (32-bit)
+- Clear **selector macros** for easy use in C/ASM:
+
+| Segment           | Selector |
+|------------------|----------|
+| Kernel CS (32-bit)| 0x08     |
+| Kernel DS (32-bit)| 0x10     |
+| Kernel CS (16-bit)| 0x18     |
+| Kernel DS (16-bit)| 0x20     |
+| User CS (32-bit)  | 0x28     |
+| User DS (32-bit)  | 0x30     |
+
+- Macros with **RPL (Requested Privilege Level)** for clarity:
+  - `RPL0` = Kernel mode
+  - `RPL3` = User mode
 
 ---
 
-## My OS Screenshot
+## How to Use
 
-![My Operating System Screenshot](./my_os.png)
+1. Include GDT header in your C kernel or ASM code:
 
-## **Features (v0.1)**
+```c
+#include "cpu/gdt.h"
+````
 
-* **Custom Bootloader (boot.asm)**
-* **Real Mode → Protected Mode switch**
-* **Second stage loader in C**
-* **VGA Text Mode fully working**
-* `printf()` support:
+2. Initialize GDT:
 
-  * `%c` (character)
-  * `%s` (string)
-  * `%d / %i` (signed int)
-  * `%u` (unsigned dec)
-  * `%x` (hex)
-  * `%b` (binary)
-  * `%w` (word 16-bit hex)
-* **Screen Color control (foreground + background macros)**
-* **Cursor Position set (setXy)**
-* **Screen clear (cls) function**
-* **Project structure clean + modular**
-* **Makefile one-command build system**
+```c
+Initialize_GDT();  // Loads g_GDTDescriptor
+```
+---
+
+## Notes
+
+* GDT entry aur descriptor structures packed hai taaki memory layout sahi rahe.
+* `GDT_ENTRY(base, limit, access, flags)` macro use kar sakte ho naya segment define karne ke liye.
+* Ye setup **bare-metal C kernel development** ke liye ready hai.
+* Compatible with bootloader jo **A20 line enable** aur **LGDT** call karta hai.
 
 ---
 
-## **Project Structure**
+## References
 
-```
-├── Makefile
-├── README.md
-├── boot
-│   ├── Makefile
-│   ├── boot.asm
-│   ├── lode_file.asm
-│   └── print.asm
-├── build
-│   ├── boot.bin
-│   ├── boot.img
-│   ├── main.o
-│   ├── second_stage.bin
-│   └── second_stage.o
-├── linker.map
-├── my_os.png
-└── stage2
-    ├── Makefile
-    ├── asm
-    │   └── second_stage.asm
-    ├── c
-    │   ├── linker.ld
-    │   └── main.c
-    └── include
-        ├── stdio.h
-        └── type.h
-```
-
----
-
-## **Build & Run Commands**
-
-### **Build**
-
-```sh
-make clean
-make
-```
-
-### **Run in QEMU**
-
-```sh
-make run
+* Intel® 64 and IA-32 Architectures Software Developer’s Manual, Vol 3A (System Programming Guide)
 ```

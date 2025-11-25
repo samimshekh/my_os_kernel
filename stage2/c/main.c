@@ -1,32 +1,11 @@
 #include "stdio.h"
-const char *text = "                                                                                "
-"                                  my_os_kernel                                  "
-"                                                                                "
-"                                                                                "
-"  #### #####  ###  ####  #####       #   # #   #        ###   ####              "
-" #       #   #   # #   #   #         ## ## #   #       #   # #                  "
-" #       #   #   # #   #   #         # # #  # #        #   # #                  "
-"  ###    #   ##### ####    #         # # #   #         #   #  ###               "
-"     #   #   #   # # #     #         #   #   #         #   #     #              "
-"     #   #   #   # #  #    #         #   #   #         #   #     #   ## ## ##   "
-" ####    #   #   # #   #   #         #   #   #          ###  ####    ## ## ##   "
-"                                                                                "
-"                      My OS Kernel - Bootloader (x86 i686)                      "
-"                                                                                "
-"                                                                                "
-"Architecture:                                                                   "
-"________________________________________________________________________________"
-"                                                                                "
-".   Target Architecture: x86 i686 (32-bit)                                      "
-".   Boot Mode: BIOS (Real Mode)                                                 "
-".   Boot Sector Size: 512 bytes                                                 "
-".   Boot Signature: 0x55AA (mandatory for BIOS recognition)                     "
-"                                                                                "
-"                                                                                "
-"                                                                                ";
+#include "cpu/gdt.h"
+
+const char *text = "# 32-bit Protected Mode GDT Setup in c\nshall> ";
 
 void main(short int d) {
     (void)d;
+    Initialize_GDT();
     setColor(LIGHT_GREEN, BLACK);
     cls();
     printf(text);
