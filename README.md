@@ -1,92 +1,130 @@
-# My OS Kernel - Bootloader (x86 i686)
+# IDT (Interrupt Descriptor Table) Setup – x86 Kernel
 
-## Overview
-Is project me humne **simple bootloader** banaya hai jo screen pe `"OK"` print karta hai aur infinite loop me chala jata hai.
+### Overview
+IDT (Interrupt Descriptor Table) ek important data structure hai jo CPU interrupts aur exceptions ko handle karta hai. Jab hardware interrupt aata hai (jaise keyboard, timer, mouse) ya CPU exception hota hai (Divide-by-zero, Page Fault, GPF, etc.), tab CPU interrupt number ke basis par IDT entry find karta hai aur respective ISR (Interrupt Service Routine) ko call karta hai.
 
----
-
-## Architecture
-- **Target Architecture:** x86 i686 (32-bit)
-- **Boot Mode:** BIOS (Real Mode)
-- **Boot Sector Size:** 512 bytes
-- **Boot Signature:** `0x55AA` (mandatory for BIOS recognition)
-
-### Boot Sector Explanation
-- **0x7C00** → BIOS bootloader load address
-- **0x55AA** → Last 2 bytes of boot sector, BIOS ke liye **signature (0x55AA)** hai naho boot nahi hota hai
-- **Boot code** → CPU initialization, screen output
-- **Padding** → Boot sector ko exactly 512 bytes banane ke liye zero padding  
-
-**Why 0x55AA?**  
-BIOS boot process ke liye ye **magic signature** hota hai. Agar ye value last me nahi hogi, BIOS bootloader ko load nahi karega.
+Is project me humne:
+- 256 IDT entries initialize ki
+- Har interrupt ke liye `isr0` to `isr255` stub functions define kiye
+- IDT pointer load kiya using `lidt` instruction
+- Exception aur Hardware IRQ ke handlers register kiye
 
 ---
 
-## Tools Required
-1. **NASM** – Assembler for x86 (`nasm`)
-2. **QEMU** – Emulator to run x86 images (`qemu-system-i386`)
-3. **Make** – Automation tool (`make`)
-4. **dd** – Binary copy to image file (Linux/WSL)
+## Components
 
----
-
-## Project Structure
-```
-
-.
-├── boot.asm       # Bootloader assembly code
-├── boot.bin       # Compiled binary (512 bytes)
-├── boot.img       # Floppy image (1.44 MB)
-└── Makefile       # Build automation
-
+### **1. IDT Entry Structure**
+```c
+struct idt_entry {
+    uint16_t base_low;   // ISR address lower 16 bits
+    uint16_t sel;        // Kernel code segment selector (GDT)
+    uint8_t  zero;       // Must be 0
+    uint8_t  flags;      // Type and privilege flags
+    uint16_t base_high;  // ISR address higher 16 bits
+} __attribute__((packed));
 ````
 
----
+### **2. IDT Pointer**
 
-## Makefile Targets
-
-- **Build bootloader binary and image**
-```bash
-make
-````
-
-* Steps:
-
-  1. `boot.asm` → compiled to `boot.bin` (NASM)
-  2. `boot.bin` → written to `boot.img` (1.44MB floppy image, `dd`)
-
-* **Run bootloader in QEMU**
-
-```bash
-make run
+```c
+struct idt_ptr {
+    uint16_t limit;  // IDT size - 1
+    uint32_t base;   // IDT array ka memory base address
+} __attribute__((packed));
 ```
 
-* QEMU automatically boots `boot.img` and shows `"OK"` on the screen.
+### **3. IDT Gate Set Function**
 
-* **Clean build files**
-
-```bash
-make clean
+```c
+void idt_set_gate(int num, uint32_t base, uint16_t sel, uint8_t flags)
+{
+    idt[num].base_low  = (base & 0xFFFF);
+    idt[num].base_high = (base >> 16) & 0xFFFF;
+    idt[num].sel       = sel;
+    idt[num].zero      = 0;
+    idt[num].flags     = flags;
+}
 ```
 
-* Removes `boot.bin` and `boot.img`.
+---
+
+## **Initialize IDT**
+
+```c
+void Initialize_Idt()
+{
+    idtp.limit = sizeof(idt) - 1;
+    idtp.base  = (uint32_t)&idt;
+
+    idt_set_gate(0, (uint32_t)isr0, 0x08, 0x8E);
+    idt_set_gate(1, (uint32_t)isr1, 0x08, 0x8E);
+    ...
+    idt_set_gate(31, (uint32_t)isr31, 0x08, 0x8E);
+
+    idt_set_gate(32, (uint32_t)isr32, 0x08, 0x8E);  
+    idt_set_gate(33, (uint32_t)isr33, 0x08, 0x8E);   
+    ...
+    idt_set_gate(47, (uint32_t)isr47, 0x08, 0x8E);
+
+    // Reserved / Syscalls
+    idt_set_gate(128, (uint32_t)isr128, 0x08, 0xEE); // System Call (user mode allowed)
+
+    idt_load((uint32_t)&idtp);  // lidt instruction
+}
+```
 
 ---
 
+## IDT Flags Meaning
+
+| Flag         | Meaning                               |
+| ------------ | ------------------------------------- |
+| `0x8E`       | Present, Ring0, 32-bit interrupt gate |
+| `0xEE`       | Present, Ring3, syscall enabled       |
+| `SEL = 0x08` | Kernel Code Segment selector from GDT |
+
 ---
 
-## Notes
+## Why 256 Entries?
 
-* Ye bootloader **x86 i686 BIOS real mode** ke liye hai.
-* Bootloader ka size **exactly 512 bytes** hona chahiye.
-* **0x55AA** end me hona mandatory hai.
-* `Makefile` simple hai aur sab automated build/run steps handle karta hai. in sab ko aap bas **make && make run** kardo   
+| Range  | Description                                |
+| ------ | ------------------------------------------ |
+| 0–31   | CPU Exceptions                             |
+| 32–47  | Hardware IRQs                              |
+| 48–255 | Free / APIC / Syscalls / Custom interrupts |
+| 128    | Linux-style system call number (standard)  |
 
+---
+
+## Flow of Interrupt Handling
+
+```
+Interrupt Occurs
+        ↓
+CPU checks IDT[index]
+        ↓
+Fetch ISR address
+        ↓
+Switch to kernel mode (if needed)
+        ↓
+Call ISR Stub (Assembly)
+        ↓
+Call C-level interrupt handler
+        ↓
+EOI (End of Interrupt) -> PIC/APIC
+```
+
+---
+
+## Test & Debug Tips
+
+| Command                      | Purpose                   |
+| ---------------------------- | ------------------------- |
+| `int $0x10`                  | Breakpoint interrupt test |
 ---
 
 ## Quick Commands
-
-```bash
+```c
 # Build bootloader
 make
 
