@@ -3,7 +3,7 @@
 **Repository:** [my_os_kernel](https://github.com/samimshekh/my_os_kernel)  
 **Architecture:** x86 i686 (32-bit)  
 **Boot Mode:** BIOS Real Mode → Protected Mode  
-**Purpose:** Bare-metal OS kernel development with complete bootloader, protected mode setup, interrupts, and basic VGA text output.
+**Purpose:** Bare-metal OS kernel development with complete bootloader, protected mode setup, interrupts, i8259 pic chip and basic VGA text output.
 
 ---
 
