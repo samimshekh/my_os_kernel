@@ -1,98 +1,102 @@
-# My OS Kernel - Bootloader (x86 i686)
+# My OS Kernel – Overview
 
-## Overview
-Is project me humne **simple bootloader** banaya hai jo screen pe `"OK"` print karta hai aur infinite loop me chala jata hai.
-
----
-
-## Architecture
-- **Target Architecture:** x86 i686 (32-bit)
-- **Boot Mode:** BIOS (Real Mode)
-- **Boot Sector Size:** 512 bytes
-- **Boot Signature:** `0x55AA` (mandatory for BIOS recognition)
-
-### Boot Sector Explanation
-- **0x7C00** → BIOS bootloader load address
-- **0x55AA** → Last 2 bytes of boot sector, BIOS ke liye **signature (0x55AA)** hai naho boot nahi hota hai
-- **Boot code** → CPU initialization, screen output
-- **Padding** → Boot sector ko exactly 512 bytes banane ke liye zero padding  
-
-**Why 0x55AA?**  
-BIOS boot process ke liye ye **magic signature** hota hai. Agar ye value last me nahi hogi, BIOS bootloader ko load nahi karega.
+**Repository:** [my_os_kernel](https://github.com/samimshekh/my_os_kernel)  
+**Architecture:** x86 i686 (32-bit)  
+**Boot Mode:** BIOS Real Mode → Protected Mode  
+**Purpose:** Bare-metal OS kernel development with complete bootloader, protected mode setup, interrupts, i8259 pic chip and basic VGA text output.
 
 ---
 
-## Tools Required
-1. **NASM** – Assembler for x86 (`nasm`)
-2. **QEMU** – Emulator to run x86 images (`qemu-system-i386`)
-3. **Make** – Automation tool (`make`)
-4. **dd** – Binary copy to image file (Linux/WSL)
+## Branch Overview
+
+| Branch | Purpose | Key Features | Status / Next Steps |
+|--------|---------|--------------|-------------------|
+| `boot_sector` | First stage bootloader | - 512 bytes bootloader <br> - CPU initialization <br> - Prints `"OK"` on screen <br> - Infinite loop <br> - 0x55AA BIOS signature | Complete. Next: Load second stage loader |
+| `second_stage_loader` | Second stage loader | - Loaded by first stage at 0x7E00 <br> - Reads sectors from floppy using BIOS INT 13h <br> - Prints `[INFO] Second Stage Loader successfully loaded` <br> - Infinite loop / waits for further tasks | Complete. Next: Switch to 32-bit protected mode |
+| `32bit_c_code_loder` | 32-bit C loader | - Real Mode → Protected Mode switch <br> - VGA Text Mode support <br> - printf() with `%c, %s, %d, %u, %x, %b, %w` <br> - Cursor & screen color control <br> - Modular structure with stage2 C code | Complete. Next: Initialize GDT for memory segmentation |
+| `protected_mode_gdt_in_c` | Global Descriptor Table (GDT) setup | - Full 32-bit protected mode GDT <br> - Kernel/User segments <br> - Selector macros (CS/DS, RPL0/RPL3) <br> - Ready for bare-metal C kernel | Complete. Next: Set up IDT for interrupts |
+| `idt-setup-in-c` | Interrupt Descriptor Table (IDT) | - 256 IDT entries <br> - ISR stubs (`isr0`–`isr255`) <br> - Exception & IRQ handlers <br> - `lidt` instruction to load IDT <br> - Syscall entry at 128 | Complete. Next: Initialize PIC for hardware IRQs |
+| `i8259-pic-remap` | PIC Initialization | - 8259A PIC remapping (Master 0x20, Slave 0x28) <br> - Port I/O functions: `outb`, `inb`, `io_wait` <br> - Hardware interrupts (IRQ0–IRQ15) ready | Complete. Next: Kernel scheduler, drivers, and system calls |
 
 ---
 
-## Project Structure
+## Project Flow
+
+1. **BIOS loads first stage bootloader** (`boot_sector`) at `0x7C00`.  
+2. **First stage loader** loads second stage loader (`second_stage_loader`) at `0x7E00`.  
+3. **Second stage C loader** (`32bit_c_code_loder`) switches CPU to 32-bit protected mode and initializes VGA/printf system.  
+4. **GDT** (`protected_mode_gdt_in_c`) sets up kernel and user memory segments.  
+5. **IDT** (`idt-setup-in-c`) sets up interrupt handling (exceptions, IRQs, syscalls).  
+6. **PIC** (`i8259-pic-remap`) remaps IRQs and enables hardware interrupts.  
+7. **Future:** Kernel scheduler, memory manager, device drivers, filesystem, and extended system calls.
+
+---
+
+## Project Structure (Simplified)
+
 ```
-
 .
-├── boot.asm       # Bootloader assembly code
-├── boot.bin       # Compiled binary (512 bytes)
-├── boot.img       # Floppy image (1.44 MB)
-└── Makefile       # Build automation
+├── Makefile
+├── README.md
+├── boot
+│   ├── Makefile
+│   ├── boot.asm
+│   ├── lode_file.asm
+│   └── print.asm
+├── build
+└── stage2
+    ├── Makefile
+    ├── asm
+    │   ├── include
+    │   │   └── isr.asm
+    │   └── second_stage.asm
+    ├── c
+    │   ├── linker.ld
+    │   └── main.c
+    └── include
+        ├── cpu
+        │   ├── gdt.h
+        │   ├── i8259.h
+        │   ├── idt.h
+        │   ├── isr.h
+        │   └── isr_handler.h
+        ├── io.h
+        ├── stdio.h
+        └── type.h
 
 ````
 
 ---
 
-## Makefile Targets
-
-- **Build bootloader binary and image**
-```bash
-make
-````
-
-* Steps:
-
-  1. `boot.asm` → compiled to `boot.bin` (NASM)
-  2. `boot.bin` → written to `boot.img` (1.44MB floppy image, `dd`)
-
-* **Run bootloader in QEMU**
+## Build & Run
 
 ```bash
-make run
-```
-
-* QEMU automatically boots `boot.img` and shows `"OK"` on the screen.
-
-* **Clean build files**
-
-```bash
+# Clean previous build
 make clean
-```
 
-* Removes `boot.bin` and `boot.img`.
+# Build bootloader + second stage + protected mode + GDT/IDT/PIC
+make
+
+# Run in QEMU
+make run
+````
 
 ---
+
+## References
+
+* Intel® 64 and IA-32 Architectures Software Developer’s Manual, Vol 3A (System Programming Guide)
+* Ralf Brown's Interrupt List (INT 13h, INT 10h)
 
 ---
 
 ## Notes
 
-* Ye bootloader **x86 i686 BIOS real mode** ke liye hai.
-* Bootloader ka size **exactly 512 bytes** hona chahiye.
-* **0x55AA** end me hona mandatory hai.
-* `Makefile` simple hai aur sab automated build/run steps handle karta hai. in sab ko aap bas **make && make run** kardo   
+* Branches should ideally be merged in this sequence to maintain proper dependency:
 
----
-
-## Quick Commands
-
-```bash
-# Build bootloader
-make
-
-# Run in QEMU
-make run
-
-# Clean build files
-make clean
-```
+  1. `boot_sector`
+  2. `second_stage_loader`
+  3. `32bit_c_code_loder`
+  4. `protected_mode_gdt_in_c`
+  5. `idt-setup-in-c`
+  6. `i8259-pic-remap`
