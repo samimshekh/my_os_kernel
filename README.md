@@ -17,6 +17,7 @@
 | `protected_mode_gdt_in_c` | Global Descriptor Table (GDT) setup | - Full 32-bit protected mode GDT <br> - Kernel/User segments <br> - Selector macros (CS/DS, RPL0/RPL3) <br> - Ready for bare-metal C kernel | Complete. Next: Set up IDT for interrupts |
 | `idt-setup-in-c` | Interrupt Descriptor Table (IDT) | - 256 IDT entries <br> - ISR stubs (`isr0`–`isr255`) <br> - Exception & IRQ handlers <br> - `lidt` instruction to load IDT <br> - Syscall entry at 128 | Complete. Next: Initialize PIC for hardware IRQs |
 | `i8259-pic-remap` | PIC Initialization | - 8259A PIC remapping (Master 0x20, Slave 0x28) <br> - Port I/O functions: `outb`, `inb`, `io_wait` <br> - Hardware interrupts (IRQ0–IRQ15) ready | Complete. Next: Kernel scheduler, drivers, and system calls |
+| `multitasking` | Multitasking Kernel (Real-Mode) | - IRQ0 PIT 100Hz scheduler <br> - Round-robin task switching <br> - fork/exit macros <br> - Per-task stack + SP save/restore <br> - 3 example tasks (M, 1, 2) dynamic creation | Stable. Next: 32bit setup multitasking and Better exit handling, task cleanup, priority scheduling |
 
 ---
 
