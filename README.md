@@ -29,7 +29,7 @@
 4. **GDT** (`protected_mode_gdt_in_c`) sets up kernel and user memory segments.  
 5. **IDT** (`idt-setup-in-c`) sets up interrupt handling (exceptions, IRQs, syscalls).  
 6. **PIC** (`i8259-pic-remap`) remaps IRQs and enables hardware interrupts.  
-7. **Future:** Kernel scheduler, memory manager, device drivers, filesystem, and extended system calls.
+7. **Future:** memory manager, device drivers, filesystem, and extended system calls.
 
 ---
 
@@ -101,3 +101,4 @@ make run
   4. `protected_mode_gdt_in_c`
   5. `idt-setup-in-c`
   6. `i8259-pic-remap`
+  7. `multitasking`
